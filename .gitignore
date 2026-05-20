@@ -9,3 +9,6 @@ dist
 .turbo
 .idea
 .vscode
+
+# Local working copy of the bus app — intended for Jaddhelou/bus-app, not this repo
+bus-app/
