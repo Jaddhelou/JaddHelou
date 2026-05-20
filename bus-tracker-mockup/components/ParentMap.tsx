@@ -2,44 +2,9 @@
 
 import { useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
-import L from "leaflet";
 import type { Bus, Route, School } from "@/lib/mockData";
 import type { BusPosition } from "@/lib/simulation";
-
-function busIcon(status: Bus["status"]): L.DivIcon {
-  const cls =
-    status === "idle"
-      ? "idle"
-      : status === "arrived"
-      ? "arrived"
-      : status === "delayed"
-      ? "delayed"
-      : "";
-  return L.divIcon({
-    className: "",
-    html: `<div class="bus-icon ${cls}">🚌</div>`,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
-  });
-}
-
-function stopIcon(done: boolean, highlight: boolean): L.DivIcon {
-  return L.divIcon({
-    className: "",
-    html: `<div class="stop-icon ${done ? "done" : ""}" ${
-      highlight ? 'style="transform:scale(1.4);border-color:#f59e0b;"' : ""
-    }></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
-}
-
-const schoolDivIcon = L.divIcon({
-  className: "",
-  html: `<div class="school-icon">🏫</div>`,
-  iconSize: [36, 36],
-  iconAnchor: [18, 18],
-});
+import { busIcon, schoolIcon, stopIcon } from "./mapIcons";
 
 function Recenter({ position }: { position: [number, number] }) {
   const map = useMap();
@@ -62,43 +27,46 @@ export default function ParentMap({
   busPos: BusPosition;
   highlightStopId?: string;
 }) {
-  const polyline = useMemo(
-    () => route.stops.map((s) => s.position),
-    [route.stops]
-  );
-
-  const center: [number, number] = busPos.position;
+  const polyline = useMemo(() => route.stops.map((s) => s.position), [route.stops]);
 
   return (
     <MapContainer
-      center={center}
+      center={busPos.position}
       zoom={14}
       scrollWheelZoom
+      zoomControl={false}
       style={{ width: "100%", height: "100%" }}
     >
       <TileLayer
-        attribution='&copy; OpenStreetMap contributors'
+        attribution='&copy; OpenStreetMap'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+
+      {/* Subtle shadow behind the live route */}
+      <Polyline
+        positions={polyline}
+        pathOptions={{ color: "#0b2545", weight: 10, opacity: 0.08 }}
       />
       <Polyline
         positions={polyline}
-        pathOptions={{ color: route.color, weight: 5, opacity: 0.7 }}
+        pathOptions={{ color: "#0b2545", weight: 4, opacity: 0.9, dashArray: "1 0" }}
       />
+
       {route.stops.map((s, idx) => {
         const done = idx < busPos.completedStops;
-        const isSchool = s.position[0] === school.position[0] && s.position[1] === school.position[1];
-        if (isSchool) {
-          return <Marker key={s.id} position={s.position} icon={schoolDivIcon} />;
-        }
+        const isSchool =
+          s.position[0] === school.position[0] && s.position[1] === school.position[1];
+        if (isSchool) return <Marker key={s.id} position={s.position} icon={schoolIcon} />;
         return (
           <Marker
             key={s.id}
             position={s.position}
-            icon={stopIcon(done, s.id === highlightStopId)}
+            icon={stopIcon({ done, highlight: s.id === highlightStopId })}
           />
         );
       })}
-      <Marker position={busPos.position} icon={busIcon(bus.status)} />
+
+      <Marker position={busPos.position} icon={busIcon(bus.status, { pulse: true })} />
       <Recenter position={busPos.position} />
     </MapContainer>
   );
