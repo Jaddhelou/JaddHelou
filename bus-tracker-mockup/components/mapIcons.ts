@@ -21,7 +21,7 @@ const SCHOOL_SVG = `
 
 export function busIcon(
   status: Bus["status"],
-  opts: { selected?: boolean; pulse?: boolean } = {}
+  opts: { selected?: boolean; pulse?: boolean; bearingDeg?: number } = {}
 ): L.DivIcon {
   const cls =
     status === "delayed"
@@ -33,9 +33,14 @@ export function busIcon(
       : "";
   const sel = opts.selected ? "selected" : "";
   const pulse = opts.pulse && status === "on_route" ? "pulse" : "";
+  const bearing = opts.bearingDeg ?? 0;
+  const headingHtml =
+    status === "on_route"
+      ? `<span class="heading" style="transform: translateX(-50%) rotate(${bearing}deg);"></span>`
+      : "";
   return L.divIcon({
     className: "",
-    html: `<div class="marker-bus ${cls} ${sel} ${pulse}">${BUS_SVG}</div>`,
+    html: `<div class="marker-bus ${cls} ${sel} ${pulse}">${headingHtml}${BUS_SVG}</div>`,
     iconSize: [40, 40],
     iconAnchor: [20, 20],
   });

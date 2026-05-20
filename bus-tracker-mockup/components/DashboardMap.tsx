@@ -1,6 +1,16 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Polyline, Popup } from "react-leaflet";
+import { useEffect, useMemo, useRef } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Polyline,
+  Tooltip,
+  useMap,
+} from "react-leaflet";
+import L from "leaflet";
+import { Maximize2 } from "lucide-react";
 import type { Bus, Route, School } from "@/lib/mockData";
 import type { BusPosition } from "@/lib/simulation";
 import { busIcon, schoolIcon } from "./mapIcons";
@@ -9,6 +19,22 @@ export interface FleetEntry {
   bus: Bus;
   route: Route;
   position: BusPosition;
+}
+
+function MapBridge({ refOut }: { refOut: React.MutableRefObject<L.Map | null> }) {
+  const map = useMap();
+  useEffect(() => {
+    refOut.current = map;
+  }, [map, refOut]);
+  return null;
+}
+
+function FitOnMount({ bounds }: { bounds: L.LatLngBoundsExpression }) {
+  const map = useMap();
+  useEffect(() => {
+    map.fitBounds(bounds, { padding: [70, 70], animate: false });
+  }, []);
+  return null;
 }
 
 export default function DashboardMap({
@@ -22,6 +48,19 @@ export default function DashboardMap({
   selectedBusId?: string;
   onSelect?: (busId: string) => void;
 }) {
+  const mapRef = useRef<L.Map | null>(null);
+
+  const allPoints = useMemo(() => {
+    const pts: L.LatLngTuple[] = [school.position as L.LatLngTuple];
+    fleet.forEach((f) => {
+      pts.push(f.position.position as L.LatLngTuple);
+      f.route.stops.forEach((s) => pts.push(s.position as L.LatLngTuple));
+    });
+    return pts;
+  }, [fleet, school]);
+
+  const bounds = useMemo(() => L.latLngBounds(allPoints), [allPoints]);
+
   return (
     <MapContainer
       center={school.position}
@@ -31,50 +70,92 @@ export default function DashboardMap({
       style={{ width: "100%", height: "100%" }}
     >
       <TileLayer
-        attribution='&copy; OpenStreetMap'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://carto.com">CARTO</a> &copy; OpenStreetMap'
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        subdomains="abcd"
       />
+
+      {/* All route casings */}
       {fleet.map((f) => (
         <Polyline
-          key={`line-${f.route.id}`}
+          key={`casing-${f.route.id}`}
           positions={f.route.stops.map((s) => s.position)}
           pathOptions={{
-            color: f.route.color,
-            weight: f.bus.id === selectedBusId ? 6 : 3,
-            opacity: f.bus.id === selectedBusId ? 0.95 : 0.5,
+            color: "#ffffff",
+            weight: f.bus.id === selectedBusId ? 9 : 6,
+            opacity: 0.9,
           }}
+          className="route-casing"
         />
       ))}
+
+      {/* All route fills */}
+      {fleet.map((f) => {
+        const isSel = f.bus.id === selectedBusId;
+        return (
+          <Polyline
+            key={`fill-${f.route.id}`}
+            positions={f.route.stops.map((s) => s.position)}
+            pathOptions={{
+              color: f.route.color,
+              weight: isSel ? 5 : 3,
+              opacity: isSel ? 1 : selectedBusId ? 0.35 : 0.7,
+            }}
+            className={`route-casing ${isSel ? "route-live" : ""}`}
+          />
+        );
+      })}
+
+      {/* School */}
       <Marker position={school.position} icon={schoolIcon}>
-        <Popup>
-          <strong>{school.name}</strong>
-          <br />
-          Operating {fleet.length} buses
-        </Popup>
+        <Tooltip permanent direction="top" offset={[0, -22]} className="tooltip-navy">
+          {school.name}
+        </Tooltip>
       </Marker>
-      {fleet.map((f) => (
-        <Marker
-          key={f.bus.id}
-          position={f.position.position}
-          icon={busIcon(f.bus.status, {
-            selected: f.bus.id === selectedBusId,
-            pulse: f.bus.id === selectedBusId,
-          })}
-          eventHandlers={{ click: () => onSelect?.(f.bus.id) }}
+
+      {/* Buses */}
+      {fleet.map((f) => {
+        const isSel = f.bus.id === selectedBusId;
+        return (
+          <Marker
+            key={f.bus.id}
+            position={f.position.position}
+            icon={busIcon(f.bus.status, {
+              selected: isSel,
+              pulse: isSel || f.bus.status === "delayed",
+              bearingDeg: f.position.bearingDeg,
+            })}
+            eventHandlers={{ click: () => onSelect?.(f.bus.id) }}
+            zIndexOffset={isSel ? 1000 : 0}
+          >
+            <Tooltip
+              direction="bottom"
+              offset={[0, 22]}
+              permanent={isSel}
+              className={isSel ? "tooltip-amber" : "tooltip-navy"}
+            >
+              {f.bus.plate}
+              {isSel && ` · ${Math.round(f.position.progress * 100)}%`}
+            </Tooltip>
+          </Marker>
+        );
+      })}
+
+      <MapBridge refOut={mapRef} />
+      <FitOnMount bounds={bounds} />
+
+      <div className="absolute bottom-5 right-5 z-[400] pointer-events-auto">
+        <button
+          className="map-fab"
+          onClick={() =>
+            mapRef.current?.fitBounds(bounds, { padding: [70, 70], animate: true })
+          }
+          aria-label="Fit all buses"
+          title="Fit all"
         >
-          <Popup>
-            <div style={{ minWidth: 180, fontFamily: "inherit" }}>
-              <strong>{f.bus.plate}</strong>
-              <br />
-              {f.route.name}
-              <br />
-              Driver: {f.bus.driver}
-              <br />
-              Onboard: {f.bus.onboard} / {f.bus.capacity}
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+          <Maximize2 className="w-4 h-4" />
+        </button>
+      </div>
     </MapContainer>
   );
 }

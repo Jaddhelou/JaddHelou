@@ -133,10 +133,11 @@ export default function DashboardPage() {
             selectedBusId={selectedBusId}
             onSelect={setSelectedBusId}
           />
+          <div className="map-vignette" />
 
           {/* Floating selected-bus glass card */}
           {selected && (
-            <div className="absolute bottom-4 left-4 right-4 max-w-md glass rounded-2xl p-4 flex items-center gap-4">
+            <div className="absolute bottom-4 left-4 right-4 max-w-md glass rounded-2xl p-4 flex items-center gap-4 z-[500]">
               <div className="w-12 h-12 rounded-2xl bg-navy-700 text-white flex items-center justify-center">
                 <Bus className="w-6 h-6" />
               </div>
@@ -168,7 +169,7 @@ export default function DashboardPage() {
           )}
 
           {/* Legend */}
-          <div className="absolute top-4 right-4 glass rounded-2xl px-4 py-3 text-[11px] space-y-1.5">
+          <div className="absolute top-4 right-4 glass rounded-2xl px-4 py-3 text-[11px] space-y-1.5 z-[500]">
             <p className="font-semibold text-navy-700 uppercase tracking-wider text-[10px] mb-1">
               Legend
             </p>

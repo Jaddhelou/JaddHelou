@@ -258,9 +258,10 @@ export default function ParentPage() {
               busPos={pos}
               highlightStopId={child.stopId}
             />
+            <div className="map-vignette" />
 
             {/* Floating glass overlay */}
-            <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
+            <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none z-[500]">
               <div className="glass rounded-2xl px-4 py-3 flex items-center gap-3 pointer-events-auto">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />
